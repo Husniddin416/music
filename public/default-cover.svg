@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="500" height="500">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e1136" />
+      <stop offset="50%" stop-color="#110924" />
+      <stop offset="100%" stop-color="#090514" />
+    </linearGradient>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#b829e3" />
+      <stop offset="50%" stop-color="#f037a5" />
+      <stop offset="100%" stop-color="#38d4f4" />
+    </linearGradient>
+    <linearGradient id="centerGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a824db" />
+      <stop offset="100%" stop-color="#e83696" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="500" height="500" fill="url(#bg)" />
+
+  <!-- Outer ambient glow -->
+  <circle cx="250" cy="250" r="180" fill="#a824db" opacity="0.12" filter="url(#glow)" />
+  <circle cx="250" cy="250" r="130" fill="#38d4f4" opacity="0.08" filter="url(#glow)" />
+
+  <!-- Vinyl grooves -->
+  <circle cx="250" cy="250" r="210" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="2" />
+  <circle cx="250" cy="250" r="190" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1.5" />
+  <circle cx="250" cy="250" r="170" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1.5" />
+  <circle cx="250" cy="250" r="150" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="1.5" />
+  <circle cx="250" cy="250" r="130" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="1.5" />
+
+  <!-- Center Vinyl Badge -->
+  <circle cx="250" cy="250" r="95" fill="url(#centerGrad)" filter="url(#glow)" />
+  <circle cx="250" cy="250" r="88" fill="#150c26" />
+  <circle cx="250" cy="250" r="85" fill="url(#centerGrad)" opacity="0.25" />
+
+  <!-- Headphones & Note Icon -->
+  <g transform="translate(250, 240)">
+    <!-- Headband -->
+    <path d="M -42,-4 A 42,42 0 0,1 42,-4" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" />
+    <!-- Left ear cup -->
+    <rect x="-48" y="-8" width="12" height="26" rx="6" fill="#ffffff" />
+    <rect x="-46" y="-5" width="4" height="20" rx="2" fill="#e83696" />
+    <!-- Right ear cup -->
+    <rect x="36" y="-8" width="12" height="26" rx="6" fill="#ffffff" />
+    <rect x="42" y="-5" width="4" height="20" rx="2" fill="#e83696" />
+    <!-- Music Notes inside -->
+    <path d="M -10,12 L -10,-8 L 14,-14 L 14,8 M -10,-2 L 14,-8" fill="none" stroke="#38d4f4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <circle cx="-14" cy="14" r="5" fill="#38d4f4" />
+    <circle cx="10" cy="10" r="5" fill="#38d4f4" />
+  </g>
+
+  <!-- Sound waves -->
+  <g stroke="url(#grad)" stroke-width="3" stroke-linecap="round" opacity="0.8">
+    <line x1="160" y1="380" x2="160" y2="400" />
+    <line x1="175" y1="370" x2="175" y2="410" />
+    <line x1="190" y1="360" x2="190" y2="420" />
+    <line x1="205" y1="375" x2="205" y2="405" />
+    <line x1="220" y1="355" x2="220" y2="425" />
+    <line x1="235" y1="365" x2="235" y2="415" />
+    <line x1="250" y1="350" x2="250" y2="430" />
+    <line x1="265" y1="365" x2="265" y2="415" />
+    <line x1="280" y1="355" x2="280" y2="425" />
+    <line x1="295" y1="375" x2="295" y2="405" />
+    <line x1="310" y1="360" x2="310" y2="420" />
+    <line x1="325" y1="370" x2="325" y2="410" />
+    <line x1="340" y1="380" x2="340" y2="400" />
+  </g>
+
+  <!-- Branding text -->
+  <text x="250" y="90" text-anchor="middle" fill="#ffffff" font-family="'Outfit', -apple-system, sans-serif" font-size="22" font-weight="800" letter-spacing="4" opacity="0.9">MUSIC<tspan fill="#f037a5">UZ</tspan></text>
+</svg>
