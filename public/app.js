@@ -430,22 +430,136 @@ async function loadMe() {
 }
 
 async function donateView() {
-  const { donate: d } = await api('/api/config');
+  const cfg = await api('/api/config');
+  const d = cfg.donate || {};
+  const rawCard = String(d.card || '8600000000000000').replace(/\D/g, '');
+  const fmtCard = rawCard.replace(/(\d{4})/g, '$1 ').trim();
+  const brand = rawCard.startsWith('8600') ? 'UZCARD' : rawCard.startsWith('9860') ? 'HUMO' : 'BANK KARTA';
+  const botLink = cfg.bot ? `https://t.me/${cfg.bot}` : 'https://t.me';
+
   view.innerHTML = `
-    <section class="auth glass donate">
-      <h1>Loyihani <span class="g">qo'llab-quvvatlang</span></h1>
-      <p class="muted">Donatingiz yangi qo'shiqlar va server xarajatlari uchun ishlatiladi 💜</p>
-      ${d.card ? `<div class="card-num glass" id="card-num" title="Nusxalash">
-        <div class="muted">Karta raqami</div><div class="num">${esc(d.card)}</div>
-        <div class="muted">${esc(d.owner)}</div><div class="copy-hint">📋 Bosib nusxalang</div></div>` : ''}
-      <div class="amounts">${[5000, 10000, 25000, 50000].map((a) => `<span class="chip">${a.toLocaleString('ru')} so'm</span>`).join('')}</div>
-      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:18px">
-        ${d.payme ? `<a class="btn" target="_blank" href="${esc(d.payme)}" id="btn-payme">Payme</a>` : ''}
-        ${d.click ? `<a class="btn ghost" target="_blank" href="${esc(d.click)}" id="btn-click">Click</a>` : ''}
+    <section class="donate-page">
+      <div class="donate-header">
+        <div class="donate-pill">💜 Loyihani qo'llab-quvvatlash</div>
+        <h1>Musiqani birga <span class="g">rivojlantiramiz</span></h1>
+        <p class="muted">Sizning kichik donatingiz ham sayt serverlari va yangi musiqalar uchun katta hissa qo'shadi ✨</p>
+      </div>
+
+      <div class="donate-grid">
+        <!-- Chap: Realistic Bank Card & Presets -->
+        <div class="donate-col">
+          <div class="bank-card" id="bank-card" title="Nusxalash uchun bosing">
+            <div class="bc-top">
+              <div class="bc-chip">
+                <span></span><span></span><span></span>
+              </div>
+              <div class="bc-brand">${brand}</div>
+            </div>
+            <div class="bc-number" id="bc-num-txt">${esc(fmtCard)}</div>
+            <div class="bc-bottom">
+              <div>
+                <div class="bc-label">Karta egasi</div>
+                <div class="bc-name">${esc(d.owner || 'MusicUz')}</div>
+              </div>
+              <button class="bc-copy-btn" id="bc-copy-btn" type="button">📋 Nusxalash</button>
+            </div>
+          </div>
+
+          <div class="panel glass" style="margin-top:18px">
+            <div style="font-weight:600;margin-bottom:12px">⚡ Tezkor xayriya miqdori:</div>
+            <div class="preset-amounts" id="preset-amounts">
+              <div class="preset-card" data-amt="5 000">
+                <span class="pr-emoji">☕</span>
+                <span class="pr-sum">5 000</span>
+                <span class="pr-desc">Choy</span>
+              </div>
+              <div class="preset-card on" data-amt="15 000">
+                <span class="pr-emoji">🍦</span>
+                <span class="pr-sum">15 000</span>
+                <span class="pr-desc">Muzqaymoq</span>
+              </div>
+              <div class="preset-card" data-amt="30 000">
+                <span class="pr-emoji">🍕</span>
+                <span class="pr-sum">30 000</span>
+                <span class="pr-desc">Pitsa</span>
+              </div>
+              <div class="preset-card" data-amt="50 000">
+                <span class="pr-emoji">🎧</span>
+                <span class="pr-sum">50 000</span>
+                <span class="pr-desc">Server</span>
+              </div>
+              <div class="preset-card" data-amt="100 000">
+                <span class="pr-emoji">🚀</span>
+                <span class="pr-sum">100 000</span>
+                <span class="pr-desc">Homiy</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- O'ng: Apps & Perks -->
+        <div class="donate-col">
+          <div class="panel glass">
+            <h3 style="margin-bottom:6px">💳 To'lov ilovalari:</h3>
+            <p class="muted" style="font-size:0.86rem;margin-bottom:14px">Qulay to'lov tizimini tanlang va kartaga o'tkazing:</p>
+
+            <div class="pay-apps">
+              <a class="pay-app-btn payme" id="btn-payme" href="${d.payme ? esc(d.payme) : 'javascript:void(0)'}" ${d.payme ? 'target="_blank"' : ''}>
+                <span class="pa-name">payme</span>
+                <span class="pa-hint">${d.payme ? 'To\'lov qilish →' : 'Karta nusxalanadi'}</span>
+              </a>
+              <a class="pay-app-btn click" id="btn-click" href="${d.click ? esc(d.click) : 'javascript:void(0)'}" ${d.click ? 'target="_blank"' : ''}>
+                <span class="pa-name">click</span>
+                <span class="pa-hint">${d.click ? 'To\'lov qilish →' : 'Karta nusxalanadi'}</span>
+              </a>
+              <a class="pay-app-btn uzum" id="btn-uzum" href="${d.uzum ? esc(d.uzum) : 'javascript:void(0)'}" ${d.uzum ? 'target="_blank"' : ''}>
+                <span class="pa-name">uzum</span>
+                <span class="pa-hint">${d.uzum ? 'To\'lov qilish →' : 'Karta nusxalanadi'}</span>
+              </a>
+            </div>
+
+            <div class="donate-why">
+              <h4>🎯 Mablag' nimalarga sarflanadi?</h4>
+              <ul>
+                <li>⚡ <b>Tezkor serverlar:</b> Sayt va pleyer 24/7 uzluksiz, chaqqon ishlashi uchun</li>
+                <li>🎵 <b>Yangi musiqalar:</b> Har kuni sara va sifatli qo'shiqlar bazasini kengaytirish</li>
+                <li>🤖 <b>Telegram bot:</b> Kirish kodlarini 1 soniyada bepul yetkazib berish</li>
+              </ul>
+            </div>
+
+            <div class="donate-perk">
+              <div>💬 Donat yubordingizmi? Chekni botga yuboring — profilingizga maxsus <b>Homiy 💜</b> nishoni beriladi!</div>
+              <a href="${botLink}" target="_blank" class="btn sm" style="margin-top:12px;display:inline-block">✈️ Botga xabar yuborish</a>
+            </div>
+          </div>
+        </div>
       </div>
     </section>`;
-  const c = $('#card-num');
-  if (c) c.onclick = () => navigator.clipboard.writeText(d.card.replace(/\s/g, '')).then(() => toast('Karta raqami nusxalandi ✅'));
+
+  const copyCard = () => {
+    navigator.clipboard.writeText(rawCard).then(() => {
+      const btn = $('#bc-copy-btn');
+      if (btn) btn.textContent = 'Nusxalandi! ✓';
+      setTimeout(() => { if (btn) btn.textContent = '📋 Nusxalash'; }, 2000);
+      toast(`Karta raqami nusxalandi: ${fmtCard} ✅`);
+    }).catch(() => toast('Karta: ' + fmtCard));
+  };
+
+  $('#bank-card').onclick = copyCard;
+  $('#bc-copy-btn').onclick = (e) => { e.stopPropagation(); copyCard(); };
+
+  if (!d.payme) $('#btn-payme').onclick = () => { copyCard(); toast('Karta nusxalandi! Payme ilovasiga o\'tib o\'tkazing 📱'); };
+  if (!d.click) $('#btn-click').onclick = () => { copyCard(); toast('Karta nusxalandi! Click ilovasiga o\'tib o\'tkazing 📱'); };
+  if (!d.uzum) $('#btn-uzum').onclick = () => { copyCard(); toast('Karta nusxalandi! Uzum ilovasiga o\'tib o\'tkazing 📱'); };
+
+  $('#preset-amounts').onclick = (e) => {
+    const card = e.target.closest('.preset-card');
+    if (!card) return;
+    document.querySelectorAll('.preset-card').forEach((c) => c.classList.remove('on'));
+    card.classList.add('on');
+    copyCard();
+    toast(`${card.dataset.amt} so'm tanlandi! Karta nusxalandi, ilovadan o'tkazishingiz mumkin 💜`);
+  };
 }
 
 const routes = { '': homeView, login: loginView, register: registerView, profile: profileView, admin: adminView, donate: donateView };

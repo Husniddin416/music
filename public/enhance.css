@@ -24,13 +24,76 @@ body.guest .auth {
 .auth-tabs a.on { background: var(--grad); color: #fff; box-shadow: 0 6px 20px hsla(300 90% 60% / .4); }
 .kbd, .step b.kbd { padding: 2px 8px; border-radius: 6px; background: hsla(0 0% 100% / .1); box-shadow: none; font-family: monospace; width: auto !important; height: auto !important; display: inline !important; }
 .auth input { font-size: 1rem; }
-.donate::before { content: '💜'; }
-.card-num { margin-top: 24px; padding: 24px; border-radius: 20px; cursor: pointer; text-align: left; position: relative; transition: .3s;
-  background: linear-gradient(135deg, hsla(275 80% 45% / .6), hsla(320 80% 45% / .5)); }
-.card-num:hover { transform: translateY(-4px) rotate(-1deg); box-shadow: 0 20px 40px -10px var(--a2); }
-.card-num .num { font-size: 1.6rem; font-weight: 800; letter-spacing: 3px; margin: 10px 0; }
-.copy-hint { position: absolute; top: 20px; right: 20px; font-size: .8rem; opacity: .8; }
-.amounts { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 20px; }
+/* ===== Donate Premium Layout ===== */
+.donate-page { max-width: 960px; margin: 0 auto; }
+.donate-header { text-align: center; margin-bottom: 28px; }
+.donate-pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 16px; border-radius: 99px; font-size: 0.85rem; font-weight: 600; background: hsla(275 80% 50% / .18); border: 1px solid hsla(275 80% 60% / .3); color: hsl(280 90% 75%); margin-bottom: 12px; }
+.donate-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 24px; align-items: start; }
+@media (max-width: 780px) { .donate-grid { grid-template-columns: 1fr; } }
+
+/* Realistic 3D Bank Card */
+.bank-card {
+  border-radius: 22px; padding: 26px 28px; position: relative; overflow: hidden; cursor: pointer; transition: all 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+  background: linear-gradient(135deg, hsl(275 60% 24%), hsl(320 60% 22%) 45%, hsl(240 50% 14%));
+  border: 1px solid hsla(0, 0%, 100%, 0.16); box-shadow: 0 25px 60px -15px hsla(280 80% 40% / 0.5);
+}
+.bank-card:hover { transform: translateY(-5px) scale(1.01); box-shadow: 0 30px 70px -15px hsla(300 90% 50% / 0.6); }
+.bank-card::before {
+  content: ''; position: absolute; inset: 0; background: linear-gradient(115deg, transparent 35%, hsla(0, 0%, 100%, 0.18) 48%, hsla(0, 0%, 100%, 0.28) 50%, transparent 55%);
+  transform: translateX(-100%); transition: 0.8s; pointer-events: none;
+}
+.bank-card:hover::before { transform: translateX(100%); }
+.bc-top { display: flex; justify-content: space-between; align-items: center; }
+.bc-chip {
+  width: 44px; height: 32px; border-radius: 6px; background: linear-gradient(135deg, #f7d070, #cf9d38);
+  border: 1px solid #b38424; position: relative; display: flex; align-items: center; justify-content: space-around; padding: 0 4px;
+}
+.bc-chip span { width: 1px; height: 100%; background: #966f1b; opacity: 0.7; }
+.bc-brand { font-size: 1.1rem; font-weight: 800; letter-spacing: 2px; color: #fff; text-shadow: 0 2px 10px hsla(0, 0%, 0%, 0.6); }
+.bc-number { font-family: 'Courier New', Courier, monospace; font-size: 1.55rem; font-weight: 800; letter-spacing: 3px; margin: 26px 0 20px; color: #fff; text-shadow: 0 2px 8px #000a; }
+.bc-bottom { display: flex; justify-content: space-between; align-items: flex-end; }
+.bc-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 1px; color: hsla(0, 0%, 100%, 0.6); margin-bottom: 3px; }
+.bc-name { font-weight: 700; font-size: 0.95rem; letter-spacing: 1px; text-transform: uppercase; }
+.bc-copy-btn {
+  background: hsla(0, 0%, 100%, 0.16); border: 1px solid hsla(0, 0%, 100%, 0.25); color: #fff;
+  padding: 8px 16px; border-radius: 10px; font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: 0.2s; backdrop-filter: blur(10px);
+}
+.bc-copy-btn:hover { background: #fff; color: #000; transform: scale(1.05); }
+
+/* Presets */
+.preset-amounts { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; }
+.preset-card {
+  padding: 12px 8px; border-radius: 14px; background: hsla(0, 0%, 100%, 0.04); border: 1px solid var(--border);
+  cursor: pointer; text-align: center; transition: 0.25s; display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.preset-card:hover { transform: translateY(-3px); background: hsla(0, 0%, 100%, 0.08); border-color: var(--a1); }
+.preset-card.on { background: linear-gradient(135deg, hsla(275 80% 55% / .25), hsla(320 80% 55% / .25)); border-color: var(--a1); box-shadow: 0 4px 15px hsla(280 80% 50% / .3); }
+.pr-emoji { font-size: 1.4rem; }
+.pr-sum { font-weight: 700; font-size: 0.88rem; }
+.pr-desc { font-size: 0.72rem; color: var(--muted); }
+
+/* Payment Buttons */
+.pay-apps { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+@media (max-width: 500px) { .pay-apps { grid-template-columns: 1fr; } }
+.pay-app-btn {
+  padding: 14px 10px; border-radius: 14px; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center;
+  transition: 0.25s; font-weight: 700; border: 1px solid transparent;
+}
+.pay-app-btn:hover { transform: translateY(-3px); }
+.pay-app-btn.payme { background: hsla(175, 90%, 35%, 0.18); border-color: hsla(175, 90%, 45%, 0.35); color: #2ce6d6; }
+.pay-app-btn.payme:hover { box-shadow: 0 8px 25px hsla(175, 90%, 40%, 0.4); background: hsla(175, 90%, 35%, 0.3); }
+.pay-app-btn.click { background: hsla(215, 95%, 45%, 0.18); border-color: hsla(215, 95%, 55%, 0.35); color: #4fa5ff; }
+.pay-app-btn.click:hover { box-shadow: 0 8px 25px hsla(215, 95%, 50%, 0.4); background: hsla(215, 95%, 45%, 0.3); }
+.pay-app-btn.uzum { background: hsla(270, 95%, 45%, 0.18); border-color: hsla(270, 95%, 60%, 0.35); color: #bc72ff; }
+.pay-app-btn.uzum:hover { box-shadow: 0 8px 25px hsla(270, 95%, 50%, 0.4); background: hsla(270, 95%, 45%, 0.3); }
+.pa-name { font-size: 1.05rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 800; }
+.pa-hint { font-size: 0.72rem; opacity: 0.8; font-weight: 400; }
+
+.donate-why { font-size: 0.88rem; border-top: 1px solid var(--border); padding-top: 16px; }
+.donate-why ul { list-style: none; margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.donate-why li { display: flex; gap: 8px; align-items: flex-start; color: var(--muted); }
+.donate-why li b { color: var(--text); }
+.donate-perk { margin-top: 20px; padding: 14px 18px; border-radius: 14px; background: hsla(275, 80%, 50%, 0.12); border: 1px solid hsla(275, 80%, 60%, 0.25); font-size: 0.88rem; }
 html { scroll-behavior: smooth; }
 ::selection { background: var(--a2); color: #fff; }
 ::-webkit-scrollbar { width: 10px; }

@@ -93,10 +93,22 @@ bot.onText(/\/(site|link|sayt)/, (msg) => {
 });
 
 bot.onText(/\/donate/, (msg) => {
-  const card = process.env.DONATE_CARD;
-  bot.sendMessage(msg.chat.id, card
-    ? `💜 Loyihani qo'llab-quvvatlash:\n\nKarta: <code>${card}</code>\n${process.env.DONATE_OWNER || ''}`
-    : '💜 Donat hozircha sozlanmagan.', { parse_mode: 'HTML' });
+  const card = process.env.DONATE_CARD || '8600 0000 0000 0000';
+  const siteUrl = getSiteUrl();
+  bot.sendMessage(msg.chat.id,
+    `💜 <b>MusicUz loyihasini qo'llab-quvvatlash:</b>\n\n` +
+    `💳 Karta: <code>${card}</code>\n` +
+    `👤 Egasi: <b>${process.env.DONATE_OWNER || 'MusicUz'}</b>\n\n` +
+    `🎯 Donatingiz tezkor serverlar va yangi qo'shiqlar uchun sarflanadi ✨`,
+    {
+      parse_mode: 'HTML',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '💜 Saytda to\'liq ko\'rish', url: `${siteUrl}/#/donate` }],
+          [{ text: '🌐 Saytga o\'tish', url: siteUrl }],
+        ],
+      },
+    });
 });
 
 bot.on('contact', (msg) => {

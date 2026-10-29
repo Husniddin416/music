@@ -53,10 +53,11 @@ const admin = (req, res, next) =>
 app.get('/api/config', (req, res) => res.json({
   bot: getBotUsername(),
   donate: {
-    card: process.env.DONATE_CARD || '',
-    owner: process.env.DONATE_OWNER || '',
+    card: process.env.DONATE_CARD || '8600 0000 0000 0000',
+    owner: process.env.DONATE_OWNER || 'MusicUz',
     payme: process.env.DONATE_PAYME || '',
     click: process.env.DONATE_CLICK || '',
+    uzum: process.env.DONATE_UZUM || '',
   },
 }));
 
