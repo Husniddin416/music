@@ -28,7 +28,17 @@ fs.mkdirSync(UPLOADS, { recursive: true });
 app.use('/uploads', express.static(UPLOADS));
 app.use(express.static(path.join(ROOT, 'public')));
 
-const ADMIN_PHONES = (process.env.ADMIN_PHONE || '').split(',').map(normPhone).filter(Boolean);
+const DEFAULT_ADMINS = ['998889810206'];
+const ADMIN_PHONES = Array.from(new Set([
+  ...DEFAULT_ADMINS,
+  ...(process.env.ADMIN_PHONE || '').split(',').map(normPhone).filter(Boolean),
+]));
+
+const isPhoneAdmin = (p) => {
+  const clean = normPhone(p);
+  return ADMIN_PHONES.some((a) => clean.endsWith(a) || a.endsWith(clean));
+};
+
 const SECRET = process.env.JWT_SECRET || 'music_uz_super_jwt_secret_key_2026';
 
 // ---------- middleware ----------
@@ -99,7 +109,7 @@ app.post('/api/auth/verify', (req, res) => {
   }
   db.prepare('DELETE FROM codes WHERE phone=?').run(phone);
   const contact = db.prepare('SELECT * FROM tg_contacts WHERE phone=?').get(phone);
-  const shouldBeAdmin = ADMIN_PHONES.length === 0 || ADMIN_PHONES.includes(phone) || Number(db.prepare('SELECT COUNT(*) c FROM users WHERE is_admin=1').get().c) === 0;
+  const shouldBeAdmin = isPhoneAdmin(phone) || Number(db.prepare('SELECT COUNT(*) c FROM users WHERE is_admin=1').get().c) === 0;
   let user = db.prepare('SELECT * FROM users WHERE phone=?').get(phone);
   if (!user) {
     const r = db.prepare('INSERT INTO users (phone, name, chat_id, is_admin) VALUES (?,?,?,?)')
