@@ -4,7 +4,9 @@ const view = $('#view');
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 let token = localStorage.getItem('token');
 let me = null;
-let BASE = localStorage.getItem('apiBase') || '';
+let BASE = (location.hostname && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1')
+  ? ''
+  : (localStorage.getItem('apiBase') || '');
 const media = (u) => (u && u.startsWith('/') ? BASE + u : u);
 
 // Backend qaysi portda bo'lsa ham topadi

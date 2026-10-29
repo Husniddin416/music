@@ -15,7 +15,7 @@ bot.getMe().then(async (me) => {
   await initBotInfo();
 }).catch((e) => console.error('Bot xatosi:', e.message));
 
-const getSiteUrl = () => (process.env.SITE_URL || 'http://localhost:3000').trim().replace(/\/+$/, '');
+const getSiteUrl = () => (process.env.SITE_URL || 'https://music-l8kd.onrender.com').trim().replace(/\/+$/, '');
 
 async function initBotInfo() {
   try {
