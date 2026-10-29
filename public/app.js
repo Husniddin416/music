@@ -11,9 +11,14 @@ const media = (u) => (u && u.startsWith('/') ? BASE + u : u);
 
 // Backend qaysi portda bo'lsa ham topadi
 async function findBackend() {
+  const isLiveSite = location.protocol.startsWith('http') && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1';
+  if (isLiveSite) {
+    BASE = '';
+    return true;
+  }
   const ok = async (b) => {
     try {
-      const c = new AbortController(); setTimeout(() => c.abort(), 800);
+      const c = new AbortController(); setTimeout(() => c.abort(), 1200);
       const r = await fetch(b + '/api/config', { signal: c.signal });
       return r.ok && (await r.json()).hasOwnProperty('bot');
     } catch { return false; }
@@ -211,10 +216,15 @@ async function authView(mode) {
     e.preventDefault();
     try {
       const r = await api('/api/auth/verify', { method: 'POST', body: { phone, code: $('#code').value, name: $('#reg-name')?.value } });
-      token = r.token; localStorage.setItem('token', token);
+      token = r.token;
+      localStorage.setItem('token', token);
+      if (r.user) {
+        me = r.user;
+        localStorage.setItem('currentUser', JSON.stringify(r.user));
+      }
       await loadMe();
-      toast(`Xush kelibsiz, ${r.user.name}! 🎉`);
-      location.hash = r.user.is_admin ? '#/admin' : '#/';
+      toast(`Xush kelibsiz, ${r.user?.name || ''}! 🎉`);
+      location.hash = r.user?.is_admin ? '#/admin' : '#/';
     } catch (err) { toast(err.message); }
   };
   $('#btn-back').onclick = () => { $('#f-code').classList.add('hidden'); $('#f-phone').classList.remove('hidden'); };
@@ -368,9 +378,33 @@ async function adminUsers() {
 
 // ================= auth state & router =================
 async function loadMe() {
-  if (!token) { me = null; } else {
-    try { me = await api('/api/me'); } catch { me = null; token = null; localStorage.removeItem('token'); }
+  if (!token) {
+    me = null;
+    localStorage.removeItem('currentUser');
+  } else {
+    // 1. Avval keshdan o'qiymiz — sahifa yangilanganda ro'yxatdan o'tishga otib yubormasligi uchun
+    try {
+      const cached = localStorage.getItem('currentUser');
+      if (cached) me = JSON.parse(cached);
+    } catch {}
+
+    // 2. Serverdan yangi profil ma'lumotlarini tekshiramiz
+    try {
+      const fresh = await api('/api/me');
+      me = fresh;
+      localStorage.setItem('currentUser', JSON.stringify(fresh));
+    } catch (err) {
+      // FAQAT server "401 - Token eskirgan/noto'g'ri" desa tizimdan chiqaramiz.
+      // Server sekinlashsa yoki vaqtincha xatolik bersa token saqlanib qoladi!
+      if (err.status === 401) {
+        me = null;
+        token = null;
+        localStorage.removeItem('token');
+        localStorage.removeItem('currentUser');
+      }
+    }
   }
+
   const isGuest = !me;
   document.body.classList.toggle('guest', isGuest);
   $('#player').classList.toggle('hidden', isGuest);
@@ -384,7 +418,9 @@ async function loadMe() {
   if (me) {
     $('#btn-logout').onclick = () => {
       token = null;
+      me = null;
       localStorage.removeItem('token');
+      localStorage.removeItem('currentUser');
       if (audio) { audio.pause(); audio.src = ''; }
       loadMe();
       location.hash = '#/register';

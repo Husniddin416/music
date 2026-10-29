@@ -17,6 +17,11 @@ app.use((req, res, next) => {
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
 });
+// BigInt ni JSON da to'g'ri raqam qilib yuborish
+BigInt.prototype.toJSON = function () {
+  return Number(this);
+};
+
 const ROOT = path.join(__dirname, '..');
 const UPLOADS = path.join(ROOT, 'uploads');
 fs.mkdirSync(UPLOADS, { recursive: true });
@@ -24,7 +29,7 @@ app.use('/uploads', express.static(UPLOADS));
 app.use(express.static(path.join(ROOT, 'public')));
 
 const ADMIN_PHONES = (process.env.ADMIN_PHONE || '').split(',').map(normPhone).filter(Boolean);
-const SECRET = process.env.JWT_SECRET;
+const SECRET = process.env.JWT_SECRET || 'music_uz_super_jwt_secret_key_2026';
 
 // ---------- middleware ----------
 function auth(required = true) {
