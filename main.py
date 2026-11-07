@@ -73,7 +73,7 @@ def init_db():
     CREATE TABLE IF NOT EXISTS songs (
       id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL,
       artist TEXT NOT NULL, genre TEXT, audio_url TEXT NOT NULL,
-      cover_url TEXT DEFAULT '/default-cover.svg',
+      cover_url TEXT DEFAULT '/uploads/default-cover.svg',
       plays INTEGER DEFAULT 0, created_at TEXT DEFAULT CURRENT_TIMESTAMP);
     CREATE TABLE IF NOT EXISTS likes (
       user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
@@ -90,7 +90,7 @@ def init_db():
       song_id INTEGER REFERENCES songs(id) ON DELETE CASCADE,
       played_at TEXT DEFAULT CURRENT_TIMESTAMP);
     """)
-    _conn.execute("UPDATE songs SET cover_url='/default-cover.svg' WHERE cover_url IS NULL OR cover_url=''")
+    _conn.execute("UPDATE songs SET cover_url='/uploads/default-cover.svg' WHERE cover_url IS NULL OR cover_url='' OR cover_url='/default-cover.svg'")
     _conn.commit()
     if _conn.execute("SELECT COUNT(*) FROM songs").fetchone()[0] == 0:
         demo = [
@@ -110,7 +110,7 @@ def init_db():
         for i,(t,a,g) in enumerate(demo,1):
             _conn.execute(
                 "INSERT INTO songs (title,artist,genre,audio_url,cover_url) VALUES (?,?,?,?,?)",
-                (t,a,g,f"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-{i}.mp3","/default-cover.svg"))
+                (t,a,g,f"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-{i}.mp3","/uploads/default-cover.svg"))
         _conn.commit()
 
 # ═══════════════════════════════════════════════════
@@ -198,6 +198,15 @@ async def on_contact(msg: types.Message):
 app = FastAPI(title="MusicUz API", docs_url="/api/docs")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 app.mount("/uploads", StaticFiles(directory=str(UPLOADS)), name="uploads")
+
+@app.get("/")
+async def root():
+    return {
+        "status": "online",
+        "service": "MusicUz Backend API",
+        "version": "1.0.0",
+        "docs": "/api/docs"
+    }
 
 # --- Auth helpers ---
 def make_token(uid): return jwt.encode({"id": uid}, SECRET, algorithm=ALGORITHM)
@@ -309,24 +318,26 @@ async def verify(body: VerifyReq):
 # ── Songs ──
 @app.get("/api/songs")
 async def get_songs(q:str="",genre:str="",sort:str="new",request:Request=None):
-    u = need_user(request); like=f"%{q.strip()}%"
+    u = get_user(request, required=False)
+    uid = u["id"] if u else 0
+    like = f"%{q.strip()}%"
     order = "plays DESC" if sort=="popular" else "s.id DESC"
-    rows = db().execute(f"{song_sel(u['id'])} WHERE (s.title LIKE ? OR s.artist LIKE ? "
+    rows = db().execute(f"{song_sel(uid)} WHERE (s.title LIKE ? OR s.artist LIKE ? "
                         f"OR s.genre LIKE ?) AND (?='' OR s.genre=?) ORDER BY {order}",
                         (like,like,like,genre,genre)).fetchall()
     return [dict(r) for r in rows]
 
 @app.get("/api/genres")
-async def get_genres(request: Request):
-    need_user(request)
+async def get_genres(request: Request = None):
     return [r["genre"] for r in db().execute(
         "SELECT DISTINCT genre FROM songs WHERE genre IS NOT NULL ORDER BY genre").fetchall()]
 
 @app.post("/api/songs/{sid}/play")
 async def play(sid:int, request:Request):
-    u=need_user(request); c=db()
+    u = get_user(request, required=False); c = db()
     c.execute("UPDATE songs SET plays=plays+1 WHERE id=?",(sid,))
-    c.execute("INSERT INTO history (user_id,song_id) VALUES (?,?)",(u["id"],sid))
+    if u:
+        c.execute("INSERT INTO history (user_id,song_id) VALUES (?,?)",(u["id"],sid))
     c.commit(); return {"ok":True}
 
 def _toggle(table,uid,sid):
@@ -398,7 +409,7 @@ async def admin_add(request:Request, title:str=Form(...), artist:str=Form(...),
     audio:Optional[UploadFile]=File(None), cover:Optional[UploadFile]=File(None)):
     need_admin(request)
     ap = _save_file(audio) if audio and audio.filename else audio_url.strip()
-    cp = _save_file(cover) if cover and cover.filename else (cover_url.strip() or "/default-cover.svg")
+    cp = _save_file(cover) if cover and cover.filename else (cover_url.strip() or "/uploads/default-cover.svg")
     if not title.strip() or not artist.strip() or not ap:
         raise HTTPException(400,"Nomi, ijrochi va audio majburiy")
     cur = db().execute("INSERT INTO songs (title,artist,genre,audio_url,cover_url) VALUES (?,?,?,?,?)",
@@ -419,7 +430,7 @@ async def admin_edit(sid:int, request:Request, title:str=Form(""), artist:str=Fo
     elif cover_url.strip(): cp=cover_url.strip()
     c.execute("UPDATE songs SET title=?,artist=?,genre=?,audio_url=?,cover_url=? WHERE id=?",
               (title.strip() or s["title"], artist.strip() or s["artist"],
-               genre.strip() or s["genre"], ap, cp or "/default-cover.svg", sid))
+               genre.strip() or s["genre"], ap, cp or "/uploads/default-cover.svg", sid))
     c.commit(); return {"ok":True}
 
 @app.delete("/api/admin/songs/{sid}")
