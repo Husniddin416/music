@@ -6,15 +6,13 @@ import os
 import secrets
 import random
 import time
-import mimetypes
 from pathlib import Path
 from typing import Optional
 
 from fastapi import (
-    FastAPI, Depends, HTTPException, UploadFile, File, Form,
+    FastAPI, HTTPException, UploadFile, File, Form,
     Request, status
 )
-from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from jose import JWTError, jwt
@@ -25,7 +23,6 @@ from server.db import db
 ROOT = Path(__file__).parent.parent
 UPLOADS = ROOT / "uploads"
 UPLOADS.mkdir(exist_ok=True)
-PUBLIC = ROOT / "public"
 
 SECRET = os.getenv("JWT_SECRET", "music_uz_super_jwt_secret_key_2026")
 ALGORITHM = "HS256"
@@ -529,14 +526,4 @@ async def admin_block(user_id: int, request: Request):
     return {"blocked": bool(new_state)}
 
 
-# ---- SPA fallback ----
 
-@app.get("/{full_path:path}")
-async def spa(full_path: str):
-    # /uploads yoki /api bo'lmagan barcha so'rovlar index.html ga
-    if full_path.startswith("api/") or full_path.startswith("uploads/"):
-        raise HTTPException(404)
-    index = PUBLIC / "index.html"
-    if index.exists():
-        return FileResponse(str(index))
-    raise HTTPException(404)
