@@ -2,11 +2,15 @@
 main.py — MusicUz asosiy kirish nuqtasi
 Uvicorn + FastAPI + aiogram bir jarayonda ishlaydi.
 """
+import sys
 import asyncio
 import logging
 import os
 import socket
 from pathlib import Path
+
+# server/ paketini topish uchun
+sys.path.insert(0, str(Path(__file__).parent))
 
 from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent / ".env")
