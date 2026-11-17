@@ -41,6 +41,8 @@ SITE_URL     = os.getenv("SITE_URL", "https://music-l8kd.onrender.com").rstrip("
 PORT         = int(os.getenv("PORT", 3000))
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "12345").strip()
+
 def norm_phone(p):
     return "".join(c for c in str(p or "") if c.isdigit())
 
@@ -353,6 +355,143 @@ async def on_contact(msg: types.Message):
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
             InlineKeyboardButton(text="🌐 Saytga o'tish", url=SITE_URL)]]))
 
+@dp.message(Command("admin"))
+async def cmd_admin(msg: types.Message):
+    parts = (msg.text or "").strip().split(maxsplit=1)
+    if len(parts) < 2:
+        await msg.answer("🔐 <b>Admin tizimiga kirish:</b>\nParolni kiriting:\n<code>/admin 12345</code>", parse_mode="HTML")
+        return
+    pwd = parts[1].strip()
+    if pwd == ADMIN_PASSWORD:
+        execute("UPDATE users SET is_admin=1 WHERE chat_id=%s", (msg.chat.id,))
+        u = fetch_one("SELECT * FROM users WHERE chat_id=%s", (msg.chat.id,))
+        if not u:
+            phone_row = fetch_one("SELECT phone FROM tg_contacts WHERE chat_id=%s", (msg.chat.id,))
+            phone = phone_row["phone"] if phone_row else str(msg.from_user.id)
+            execute_insert(
+                "INSERT INTO users (phone, name, chat_id, is_admin) VALUES (%s, %s, %s, 1)",
+                (phone, msg.from_user.full_name or "Admin", msg.chat.id)
+            )
+        await msg.answer(
+            "👑 <b>Tabriklaymiz! Siz Admin bo'ldingiz!</b>\n\n"
+            "Endi siz:\n"
+            "📁 Botga to'g'ridan-to'g'ri <b>.mp3 musiqa fayllarini</b> yuboring — bot ularni avtomatik bazaga qo'shadi!\n"
+            "📊 API: <code>/api/admin/*</code> yo'llarida parolingiz (<code>12345</code>) orqali boshqarishingiz mumkin.",
+            parse_mode="HTML"
+        )
+    else:
+        await msg.answer("❌ Noto'g'ri admin paroli! Parol: 12345")
+
+@dp.message(F.audio)
+async def on_audio_upload(msg: types.Message):
+    u = fetch_one("SELECT * FROM users WHERE chat_id=%s AND is_admin=1", (msg.chat.id,))
+    admin_by_phone = False
+    contact = fetch_one("SELECT phone FROM tg_contacts WHERE chat_id=%s", (msg.chat.id,))
+    if contact and is_admin_phone(contact["phone"]):
+        admin_by_phone = True
+    if not u and not admin_by_phone:
+        await msg.answer("🔒 Musiqa yuklash faqat admin uchun!\nAdmin bo'lish uchun parolni yuboring:\n<code>/admin 12345</code>", parse_mode="HTML")
+        return
+    
+    audio = msg.audio
+    title = (audio.title or "").strip()
+    artist = (audio.performer or "").strip()
+    if not title and audio.file_name:
+        stem = Path(audio.file_name).stem
+        if " - " in stem:
+            p = stem.split(" - ", 1)
+            artist = artist or p[0].strip()
+            title = p[1].strip()
+        else:
+            title = stem
+    title = title or "Nomsiz musiqa"
+    artist = artist or "Noma'lum ijrochi"
+    
+    ext = Path(audio.file_name or "song.mp3").suffix or ".mp3"
+    name = f"{int(time.time()*1000)}-{secrets.token_hex(4)}{ext}"
+    dest = UPLOADS / name
+    
+    status_msg = await msg.answer("⏳ Musiqa serverga yuklanmoqda...")
+    file_info = await bot.get_file(audio.file_id)
+    await bot.download_file(file_info.file_path, dest)
+    
+    audio_url = f"/uploads/{name}"
+    cover_url = "/uploads/default-cover.svg"
+    
+    if audio.thumbnail:
+        try:
+            t_ext = ".jpg"
+            t_name = f"{int(time.time()*1000)}-{secrets.token_hex(4)}{t_ext}"
+            t_dest = UPLOADS / t_name
+            t_info = await bot.get_file(audio.thumbnail.file_id)
+            await bot.download_file(t_info.file_path, t_dest)
+            cover_url = f"/uploads/{t_name}"
+        except Exception:
+            pass
+            
+    new_id = execute_insert(
+        "INSERT INTO songs (title, artist, genre, audio_url, cover_url) VALUES (%s, %s, %s, %s, %s)",
+        (title, artist, None, audio_url, cover_url)
+    )
+    
+    await status_msg.edit_text(
+        f"✅ <b>Musiqa fayli bazaga muvaffaqiyatli saqlandi!</b>\n\n"
+        f"🆔 ID: <code>{new_id}</code>\n"
+        f"🎵 Nomi: <b>{title}</b>\n"
+        f"🎤 Ijrochi: <b>{artist}</b>\n"
+        f"📁 Havola: <code>{audio_url}</code>",
+        parse_mode="HTML"
+    )
+
+@dp.message(F.document)
+async def on_document_upload(msg: types.Message):
+    doc = msg.document
+    fn = (doc.file_name or "").lower()
+    if not (fn.endswith(".mp3") or fn.endswith(".m4a") or fn.endswith(".wav") or fn.endswith(".ogg") or fn.endswith(".flac")):
+        return
+    
+    u = fetch_one("SELECT * FROM users WHERE chat_id=%s AND is_admin=1", (msg.chat.id,))
+    admin_by_phone = False
+    contact = fetch_one("SELECT phone FROM tg_contacts WHERE chat_id=%s", (msg.chat.id,))
+    if contact and is_admin_phone(contact["phone"]):
+        admin_by_phone = True
+    if not u and not admin_by_phone:
+        await msg.answer("🔒 Musiqa yuklash faqat admin uchun!\nAdmin bo'lish uchun parolni yuboring:\n<code>/admin 12345</code>", parse_mode="HTML")
+        return
+        
+    stem = Path(doc.file_name).stem
+    title = stem
+    artist = "Noma'lum ijrochi"
+    if " - " in stem:
+        p = stem.split(" - ", 1)
+        artist = p[0].strip()
+        title = p[1].strip()
+        
+    ext = Path(doc.file_name).suffix or ".mp3"
+    name = f"{int(time.time()*1000)}-{secrets.token_hex(4)}{ext}"
+    dest = UPLOADS / name
+    
+    status_msg = await msg.answer("⏳ Audio fayl yuklanmoqda...")
+    file_info = await bot.get_file(doc.file_id)
+    await bot.download_file(file_info.file_path, dest)
+    
+    audio_url = f"/uploads/{name}"
+    cover_url = "/uploads/default-cover.svg"
+    
+    new_id = execute_insert(
+        "INSERT INTO songs (title, artist, genre, audio_url, cover_url) VALUES (%s, %s, %s, %s, %s)",
+        (title, artist, None, audio_url, cover_url)
+    )
+    
+    await status_msg.edit_text(
+        f"✅ <b>Audio fayl bazaga muvaffaqiyatli saqlandi!</b>\n\n"
+        f"🆔 ID: <code>{new_id}</code>\n"
+        f"🎵 Nomi: <b>{title}</b>\n"
+        f"🎤 Ijrochi: <b>{artist}</b>\n"
+        f"📁 Havola: <code>{audio_url}</code>",
+        parse_mode="HTML"
+    )
+
 # ═══════════════════════════════════════════════════
 # FASTAPI
 # ═══════════════════════════════════════════════════
@@ -391,11 +530,27 @@ def get_user(request: Request, required=True):
 
 def need_user(r: Request):  return get_user(r, True)
 def need_admin(r: Request):
+    # 1. X-Admin-Password sarlavhasi yoki ?password=12345 parametri orqali
+    pwd = (
+        r.headers.get("X-Admin-Password")
+        or r.headers.get("x-admin-password")
+        or r.query_params.get("password")
+        or r.query_params.get("admin_password")
+    )
+    if pwd and pwd == ADMIN_PASSWORD:
+        admin_row = fetch_one("SELECT * FROM users WHERE is_admin=1 ORDER BY id ASC")
+        if admin_row:
+            return admin_row
+        return {"id": 1, "is_admin": 1, "name": "Admin", "phone": "998889810206"}
+    
+    # 2. JWT Bearer token orqali
     u = need_user(r)
-    if not u["is_admin"]: raise HTTPException(403,"Faqat admin uchun")
+    if not u["is_admin"]: raise HTTPException(403, "Faqat admin uchun! Admin paroli: 12345")
     return u
 
 # --- Pydantic ---
+class AdminLoginReq(BaseModel):
+    password: str
 class PhoneReq(BaseModel):
     phone: str
     mode: Optional[str] = "login"
@@ -562,6 +717,24 @@ async def me_saved(request:Request):
     )
 
 # ── Admin ──
+@app.post("/api/admin/login")
+async def admin_login(body: AdminLoginReq):
+    if body.password.strip() != ADMIN_PASSWORD:
+        raise HTTPException(401, "Noto'g'ri admin paroli! To'g'ri parol: 12345")
+    admin = fetch_one("SELECT * FROM users WHERE is_admin=1 ORDER BY id ASC")
+    if not admin:
+        admin_id = execute_insert(
+            "INSERT INTO users (phone, name, is_admin) VALUES (%s, %s, 1)",
+            ("998889810206", "Admin")
+        )
+        admin = fetch_one("SELECT * FROM users WHERE id=%s", (admin_id,))
+    return {
+        "ok": True,
+        "token": make_token(admin["id"]),
+        "user": admin,
+        "message": "Admin tizimiga xush kelibsiz! Parol: 12345"
+    }
+
 @app.get("/api/admin/stats")
 async def admin_stats(request:Request):
     need_admin(request)
@@ -572,25 +745,47 @@ async def admin_stats(request:Request):
     return {"users": u_c, "songs": s_c, "likes": l_c, "plays": p_c}
 
 def _save_file(f: UploadFile) -> str:
-    ext  = Path(f.filename).suffix
+    ext  = Path(f.filename or "file.mp3").suffix or ".mp3"
     name = f"{int(time.time()*1000)}-{secrets.token_hex(4)}{ext}"
     with open(UPLOADS/name, "wb") as out: out.write(f.file.read())
     return f"/uploads/{name}"
 
 @app.post("/api/admin/songs")
-async def admin_add(request:Request, title:str=Form(...), artist:str=Form(...),
+async def admin_add(request:Request, title:str=Form(""), artist:str=Form(""),
     genre:str=Form(""), audio_url:str=Form(""), cover_url:str=Form(""),
     audio:Optional[UploadFile]=File(None), cover:Optional[UploadFile]=File(None)):
     need_admin(request)
     ap = _save_file(audio) if audio and audio.filename else audio_url.strip()
+    if not ap:
+        raise HTTPException(400, "Audio fayl (.mp3) yuklang yoki audio_url kiriting!")
+    
+    clean_title = title.strip()
+    clean_artist = artist.strip()
+    if not clean_title and audio and audio.filename:
+        stem = Path(audio.filename).stem
+        if " - " in stem:
+            parts = stem.split(" - ", 1)
+            clean_artist = clean_artist or parts[0].strip()
+            clean_title = parts[1].strip()
+        else:
+            clean_title = stem.replace("_", " ").strip()
+    clean_title = clean_title or "Nomsiz musiqa"
+    clean_artist = clean_artist or "Noma'lum ijrochi"
+    
     cp = _save_file(cover) if cover and cover.filename else (cover_url.strip() or "/uploads/default-cover.svg")
-    if not title.strip() or not artist.strip() or not ap:
-        raise HTTPException(400, "Nomi, ijrochi va audio majburiy")
     new_id = execute_insert(
         "INSERT INTO songs (title, artist, genre, audio_url, cover_url) VALUES (%s, %s, %s, %s, %s)",
-        (title.strip(), artist.strip(), genre.strip() or None, ap, cp)
+        (clean_title, clean_artist, genre.strip() or None, ap, cp)
     )
-    return {"id": new_id}
+    return {
+        "ok": True,
+        "id": new_id,
+        "title": clean_title,
+        "artist": clean_artist,
+        "genre": genre.strip() or None,
+        "audio_url": ap,
+        "cover_url": cp
+    }
 
 @app.put("/api/admin/songs/{sid}")
 async def admin_edit(sid:int, request:Request, title:str=Form(""), artist:str=Form(""),
