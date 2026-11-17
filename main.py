@@ -41,7 +41,8 @@ SITE_URL     = os.getenv("SITE_URL", "https://music-l8kd.onrender.com").rstrip("
 PORT         = int(os.getenv("PORT", 3000))
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "12345").strip()
+ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "Muhammad").strip()
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "muhammad2002").strip()
 
 def norm_phone(p):
     return "".join(c for c in str(p or "") if c.isdigit())
@@ -357,30 +358,35 @@ async def on_contact(msg: types.Message):
 
 @dp.message(Command("admin"))
 async def cmd_admin(msg: types.Message):
-    parts = (msg.text or "").strip().split(maxsplit=1)
-    if len(parts) < 2:
-        await msg.answer("🔐 <b>Admin tizimiga kirish:</b>\nParolni kiriting:\n<code>/admin 12345</code>", parse_mode="HTML")
+    parts = (msg.text or "").strip().split()
+    if len(parts) < 3:
+        await msg.answer(
+            "🔐 <b>Admin tizimiga kirish:</b>\n\n"
+            "Login va parolingizni kiriting:\n"
+            "<code>/admin Muhammad muhammad2002</code>",
+            parse_mode="HTML"
+        )
         return
-    pwd = parts[1].strip()
-    if pwd == ADMIN_PASSWORD:
-        execute("UPDATE users SET is_admin=1 WHERE chat_id=%s", (msg.chat.id,))
+    username = parts[1].strip()
+    pwd = parts[2].strip()
+    if username.lower() == ADMIN_USERNAME.lower() and pwd == ADMIN_PASSWORD:
+        execute("UPDATE users SET is_admin=1, name=%s WHERE chat_id=%s", (ADMIN_USERNAME, msg.chat.id))
         u = fetch_one("SELECT * FROM users WHERE chat_id=%s", (msg.chat.id,))
         if not u:
             phone_row = fetch_one("SELECT phone FROM tg_contacts WHERE chat_id=%s", (msg.chat.id,))
-            phone = phone_row["phone"] if phone_row else str(msg.from_user.id)
+            phone = phone_row["phone"] if phone_row else f"admin_{msg.from_user.id}"
             execute_insert(
                 "INSERT INTO users (phone, name, chat_id, is_admin) VALUES (%s, %s, %s, 1)",
-                (phone, msg.from_user.full_name or "Admin", msg.chat.id)
+                (phone, ADMIN_USERNAME, msg.chat.id)
             )
         await msg.answer(
-            "👑 <b>Tabriklaymiz! Siz Admin bo'ldingiz!</b>\n\n"
-            "Endi siz:\n"
-            "📁 Botga to'g'ridan-to'g'ri <b>.mp3 musiqa fayllarini</b> yuboring — bot ularni avtomatik bazaga qo'shadi!\n"
-            "📊 API: <code>/api/admin/*</code> yo'llarida parolingiz (<code>12345</code>) orqali boshqarishingiz mumkin.",
+            f"👑 <b>Xush kelibsiz, {ADMIN_USERNAME}!</b>\n\n"
+            f"✅ Tizim sizni <b>Admin</b> sifatida eslab qoldi!\n"
+            f"Endi botga to'g'ridan-to'g'ri <b>.mp3 musiqa fayllarini</b> tashlang — ular avtomatik Neon bazasiga qo'shiladi.",
             parse_mode="HTML"
         )
     else:
-        await msg.answer("❌ Noto'g'ri admin paroli! Parol: 12345")
+        await msg.answer("❌ Noto'g'ri login yoki parol!\nMisol: <code>/admin Muhammad muhammad2002</code>", parse_mode="HTML")
 
 @dp.message(F.audio)
 async def on_audio_upload(msg: types.Message):
@@ -390,7 +396,7 @@ async def on_audio_upload(msg: types.Message):
     if contact and is_admin_phone(contact["phone"]):
         admin_by_phone = True
     if not u and not admin_by_phone:
-        await msg.answer("🔒 Musiqa yuklash faqat admin uchun!\nAdmin bo'lish uchun parolni yuboring:\n<code>/admin 12345</code>", parse_mode="HTML")
+        await msg.answer("🔒 Musiqa yuklash faqat admin uchun!\nAdmin bo'lish uchun login va parolni yuboring:\n<code>/admin Muhammad muhammad2002</code>", parse_mode="HTML")
         return
     
     audio = msg.audio
@@ -456,7 +462,7 @@ async def on_document_upload(msg: types.Message):
     if contact and is_admin_phone(contact["phone"]):
         admin_by_phone = True
     if not u and not admin_by_phone:
-        await msg.answer("🔒 Musiqa yuklash faqat admin uchun!\nAdmin bo'lish uchun parolni yuboring:\n<code>/admin 12345</code>", parse_mode="HTML")
+        await msg.answer("🔒 Musiqa yuklash faqat admin uchun!\nAdmin bo'lish uchun login va parolni yuboring:\n<code>/admin Muhammad muhammad2002</code>", parse_mode="HTML")
         return
         
     stem = Path(doc.file_name).stem
@@ -530,26 +536,29 @@ def get_user(request: Request, required=True):
 
 def need_user(r: Request):  return get_user(r, True)
 def need_admin(r: Request):
-    # 1. X-Admin-Password sarlavhasi yoki ?password=12345 parametri orqali
-    pwd = (
+    # 1. X-Admin-Username va X-Admin-Password yoki query parametrlar orqali
+    user_hdr = r.headers.get("X-Admin-Username") or r.query_params.get("username")
+    pwd_hdr = (
         r.headers.get("X-Admin-Password")
         or r.headers.get("x-admin-password")
         or r.query_params.get("password")
         or r.query_params.get("admin_password")
     )
-    if pwd and pwd == ADMIN_PASSWORD:
+    if pwd_hdr and pwd_hdr == ADMIN_PASSWORD and (not user_hdr or user_hdr.strip().lower() == ADMIN_USERNAME.lower()):
         admin_row = fetch_one("SELECT * FROM users WHERE is_admin=1 ORDER BY id ASC")
         if admin_row:
             return admin_row
-        return {"id": 1, "is_admin": 1, "name": "Admin", "phone": "998889810206"}
+        return {"id": 1, "is_admin": 1, "name": ADMIN_USERNAME, "phone": "admin"}
     
     # 2. JWT Bearer token orqali
     u = need_user(r)
-    if not u["is_admin"]: raise HTTPException(403, "Faqat admin uchun! Admin paroli: 12345")
+    if not u["is_admin"]:
+        raise HTTPException(403, "Faqat admin uchun! Login: Muhammad, Parol: muhammad2002")
     return u
 
 # --- Pydantic ---
 class AdminLoginReq(BaseModel):
+    username: str
     password: str
 class PhoneReq(BaseModel):
     phone: str
@@ -719,20 +728,28 @@ async def me_saved(request:Request):
 # ── Admin ──
 @app.post("/api/admin/login")
 async def admin_login(body: AdminLoginReq):
-    if body.password.strip() != ADMIN_PASSWORD:
-        raise HTTPException(401, "Noto'g'ri admin paroli! To'g'ri parol: 12345")
+    u_match = body.username.strip().lower() == ADMIN_USERNAME.lower()
+    p_match = body.password.strip() == ADMIN_PASSWORD
+    if not (u_match and p_match):
+        raise HTTPException(401, "Noto'g'ri login yoki parol! Login: Muhammad, Parol: muhammad2002")
+    
+    # Bazadan admin qidirish yoki yaratish
     admin = fetch_one("SELECT * FROM users WHERE is_admin=1 ORDER BY id ASC")
     if not admin:
         admin_id = execute_insert(
             "INSERT INTO users (phone, name, is_admin) VALUES (%s, %s, 1)",
-            ("998889810206", "Admin")
+            ("admin_muhammad", ADMIN_USERNAME)
         )
         admin = fetch_one("SELECT * FROM users WHERE id=%s", (admin_id,))
+    else:
+        execute("UPDATE users SET name=%s WHERE id=%s", (ADMIN_USERNAME, admin["id"]))
+        admin["name"] = ADMIN_USERNAME
+        
     return {
         "ok": True,
         "token": make_token(admin["id"]),
         "user": admin,
-        "message": "Admin tizimiga xush kelibsiz! Parol: 12345"
+        "message": f"Xush kelibsiz, {ADMIN_USERNAME}! Tizim sizni eslab qoldi."
     }
 
 @app.get("/api/admin/stats")
